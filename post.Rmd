@@ -1,0 +1,253 @@
+---
+title: 'btmembers: An R package to import data on all members of the Bundestag since
+  1949'
+author: "Philippe Joly"
+date: "05/10/2020"
+output:
+  html_document:
+    highlight: pygments
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The Bundestag distributes [biographical and election data](https://www.bundestag.de/services/opendata/) on all its members since 1949. This data, however, is only available in XML, a format most social scientists will find difficult to work with. In this blog post, I would like to introduce a tool to make the Bundestag open data accessible to a broader public: the btmembers R package. btmembers downloads the XML file on members of the Bundestag, converts it to a data frame, and recodes some of the variables. The generated dataset contains more than 11,000 observations for more than 4,000 members of the Bundestag. The unit of analysis is a member-term.
+
+
+## A look at the original data
+
+Working with XML data can be difficult. That is because, unlike usual rectangular datasets, XML files have a tree-like structure. They can store data in an abitrary number of dimensions. 
+
+To illustrate this, let us have a look at the data on members of the Bundestag. Below is an example of the data for a member of the Bundestag named Ursula Benedix-Engler (CDU), who was in office between 1972 and 1983. 
+
+```{r example_xml, engine='xml', highlight=TRUE}
+<MDB>
+  <ID>11000141</ID>
+  <NAMEN>
+    <NAME>
+      <NACHNAME>Benedix</NACHNAME>
+      <VORNAME>Ursula</VORNAME>
+      <ORTSZUSATZ/>
+      <ADEL/>
+      <PRAEFIX/>
+      <ANREDE_TITEL/>
+      <AKAD_TITEL/>
+      <HISTORIE_VON>13.12.1972</HISTORIE_VON>
+      <HISTORIE_BIS>31.07.1979</HISTORIE_BIS>
+    </NAME>
+    <NAME>
+      <NACHNAME>Benedix-Engler</NACHNAME>
+      <VORNAME>Ursula</VORNAME>
+      <ORTSZUSATZ/>
+      <ADEL/>
+      <PRAEFIX/>
+      <ANREDE_TITEL/>
+      <AKAD_TITEL/>
+      <HISTORIE_VON>01.08.1979</HISTORIE_VON>
+      <HISTORIE_BIS/>
+    </NAME>
+  </NAMEN>
+  <BIOGRAFISCHE_ANGABEN>
+    <GEBURTSDATUM>12.09.1922</GEBURTSDATUM>
+    <GEBURTSORT>Neurode / Schlesien</GEBURTSORT>
+    <GEBURTSLAND/>
+    <STERBEDATUM>17.05.2014</STERBEDATUM>
+    <GESCHLECHT>weiblich</GESCHLECHT>
+    <FAMILIENSTAND>verheiratet</FAMILIENSTAND>
+    <RELIGION>katholisch</RELIGION>
+    <BERUF>Oberstudienrätin a. D., Diplomhandelslehrerin</BERUF>
+    <PARTEI_KURZ>CDU</PARTEI_KURZ>
+    <VITA_KURZ/>
+    <VEROEFFENTLICHUNGSPFLICHTIGES/>
+  </BIOGRAFISCHE_ANGABEN>
+  <WAHLPERIODEN>
+    <WAHLPERIODE>
+      <WP>7</WP>
+      <MDBWP_VON>13.12.1972</MDBWP_VON>
+      <MDBWP_BIS>13.12.1976</MDBWP_BIS>
+      <WKR_NUMMER/>
+      <WKR_NAME/>
+      <WKR_LAND/>
+      <LISTE>NDS</LISTE>
+      <MANDATSART>Landesliste</MANDATSART>
+      <INSTITUTIONEN>
+        <INSTITUTION>
+          <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
+          <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
+          <MDBINS_VON/>
+          <MDBINS_BIS/>
+          <FKT_LANG/>
+          <FKTINS_VON/>
+          <FKTINS_BIS/>
+        </INSTITUTION>
+      </INSTITUTIONEN>
+    </WAHLPERIODE>
+    <WAHLPERIODE>
+      <WP>8</WP>
+      <MDBWP_VON>14.12.1976</MDBWP_VON>
+      <MDBWP_BIS>04.11.1980</MDBWP_BIS>
+      <WKR_NUMMER/>
+      <WKR_NAME/>
+      <WKR_LAND/>
+      <LISTE>NDS</LISTE>
+      <MANDATSART>Landesliste</MANDATSART>
+      <INSTITUTIONEN>
+        <INSTITUTION>
+          <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
+          <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
+          <MDBINS_VON/>
+          <MDBINS_BIS/>
+          <FKT_LANG/>
+          <FKTINS_VON/>
+          <FKTINS_BIS/>
+        </INSTITUTION>
+      </INSTITUTIONEN>
+    </WAHLPERIODE>
+    <WAHLPERIODE>
+      <WP>9</WP>
+      <MDBWP_VON>04.11.1980</MDBWP_VON>
+      <MDBWP_BIS>29.03.1983</MDBWP_BIS>
+      <WKR_NUMMER/>
+      <WKR_NAME/>
+      <WKR_LAND/>
+      <LISTE>NDS</LISTE>
+      <MANDATSART>Landesliste</MANDATSART>
+      <INSTITUTIONEN>
+        <INSTITUTION>
+          <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
+          <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
+          <MDBINS_VON>04.11.1980</MDBINS_VON>
+          <MDBINS_BIS>29.03.1983</MDBINS_BIS>
+          <FKT_LANG/>
+          <FKTINS_VON/>
+          <FKTINS_BIS/>
+        </INSTITUTION>
+      </INSTITUTIONEN>
+    </WAHLPERIODE>
+  </WAHLPERIODEN>
+</MDB>
+```
+
+The file contains an XML-[node](https://en.wikipedia.org/wiki/Node_(computer_science)) named `MDB` (Mitglied des Deutschen Bundestages) for each member of the Bundestag. This node has four [children](https://en.wikipedia.org/wiki/Tree_(data_structure)): `ID` (id), `NAMEN` (names), `BIOGRAFISCHE_ANGABEN` (biographical information), and `WAHLPERIODEN` (parliamentary terms). All of these four children, except `ID`, have descendants (data nested within different dimensions).
+
+In the example above, we see that the MdB has two names (after getting married) and she served three terms in which she was a member of the CDU/CSU faction. 
+
+If we are not only interested in a specific member of the Bundestag but want to compare groups of members, we need a different data structure. I was faced with this problem while working on a chapter in an edited volume on the AfD[^1] and started preparing R scripts to reshape the data. A few months later, I turned these scripts into a proper package to hopefully make the Bundestag open data a little more accessible. 
+
+## Getting started with btmembers
+
+The objective of btmembers is to import the file "Stammdaten aller Abgeordneten seit 1949 im XML-Format" and turn it into a tidy rectangular dataset. This involves both the mechanical operation of moving values into tabular cells and some choices about what information to keep or drop. The unit of analysis in the generated dataset is a member-term. In other words, each member can have multiple observations (multiple rows). Some variables are constant for each member (e.g., date of birth) while others vary over time (e.g., start date of a parliamentary term). The dataset preserves almost all of the original data, except two elements:
+
+* Only the most recent names of the member are preserved. 
+* The "functions" of the member during a parliamentary term are not reported. We already have term variables nested in member variables. Incorporating the functions into the dataset would add yet another level of analysis since members can carry out multiple functions during the same term. A look at the original data also revealed that this variable was not coded systematically and often omits functions carried out by the members. 
+
+The next sections describe how to import the data processed by btmembers. 
+
+### Installation
+
+btmembers is currently hosted on [GitHub](https://github.com/jolyphil/btmembers). I am considering submitting to CRAN at a later stage. For now, you can install the package using devtools.
+
+```{r install, eval=FALSE}
+# install.packages("devtools")
+devtools::install_github("jolyphil/btmembers")
+```
+
+### Preloaded data
+
+btmembers comes preloaded with the tabular dataset. The data is stored in an object called `members` and can be retrieved as follows:
+
+```{r preloaded_data}
+library(btmembers)
+members
+```
+
+### Variables
+
+```{r print_desc, echo = FALSE, results = "asis"}
+cat(paste0("The current version of the dataset (",
+           attr(members, "version"),
+           ") contains ", 
+           nrow(members), 
+           " observations from ", 
+           length(unique(btmembers::members$id)), 
+           " members. The data includes ", 
+           ncol(btmembers::members), 
+           " variables (in German):[^2]"),
+    sep = "  \n")
+```
+
+```{r codebook, echo = FALSE}
+library(knitr)
+Variable <- names(members)
+Type <- vapply(members, class, character(1), USE.NAMES = FALSE)
+Label <- vapply(members, attr, character(1), USE.NAMES = FALSE, which = "label")
+kable(data.frame(Variable, Type, Label))
+```
+
+### Updating the data
+
+One of the main advantage of btmembers over other available datasets is the easiness with which users can update the data. The Bundestag updates the source file a few times every year.
+
+The version of the dataset preloaded with your installation of btmembers is stored as an attribute of the `members` object.
+
+```{r current_version}
+attr(members, "version")
+```
+
+To check if a more recent version of the data is available on the bundestag website, simply call the following function:
+
+```{r update_available}
+update_available()
+```
+
+If `update_available()` returns `TRUE`, you can import a more recent version of the dataset using `import_members()`. **Warning**: Importing and converting a new version of the dataset might take several minutes. 
+
+```{r import_members, eval=FALSE}
+members_new <- import_members()
+```
+
+Note that `members_new` is only stored in your global environment. You may save it on your disk using `saveRDS()`.
+
+```{r save_members, eval=FALSE}
+saveRDS(members_new, "members_new.rds")
+```
+
+## Applications
+
+btmembers is particularly useful for studies on political representation. It is also a great tool for teaching. 
+
+### Research on political representation
+
+Descriptive representation is the idea that the composition of parliaments (for example, in terms of gender, age, ethnicity, and social structure) should mirror the constituencies that elected members into office. With btmembers, it is easy to track the representation of certain groups in the Bundestag, for example, women.  
+
+```{r women}
+library(dplyr)
+share_women <- members %>%
+  filter(partei_kurz == "CDU" | 
+         partei_kurz == "CSU" |
+         partei_kurz == "SPD" |
+         partei_kurz == "FDP") %>%
+  group_by(partei_kurz, wp) %>%
+  summarize(women = mean(geschlecht == "weiblich"))
+share_women
+```
+
+```{r women_graph}
+library(ggplot2)
+ggplot(data = share_women, aes(x = wp, y = women, color = partei_kurz)) +
+  geom_point() +
+  geom_smooth()
+```
+
+
+
+
+### Teaching
+
+dfs
+
+[^1]: Schroeder, W., Weßels, B., & and Joly, P. (2019). Die AfD als Provokateur: Metamorphosen einer Partei zwischen Parlament und Bewegung. In W. Schroeder & B. Weßels (Eds.), _Smarte Spalter: Die AfD zwischen Bewegung und Parlament_ (pp. 221-256). Bonn: Dietz.
+
+[^2]: A codebook is also available in the associated help page (`?members`) and on  [GitHub](https://github.com/jolyphil/btmembers/blob/master/codebook/codebook.pdf).
