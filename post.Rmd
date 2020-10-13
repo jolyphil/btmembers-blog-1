@@ -13,14 +13,14 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-The Bundestag distributes [biographical and election data](https://www.bundestag.de/services/opendata/) on all its members since 1949. This data, however, is only available in XML, a format most social scientists will find difficult to work with. In this blog post, I would like to introduce a tool to make the Bundestag open data accessible to a broader public: the btmembers R package. btmembers downloads the XML file on members of the Bundestag, converts it to a data frame, and recodes some of the variables. The generated dataset contains more than 11,000 observations for more than 4,000 members of the Bundestag. The unit of analysis is a member-term.
+The Bundestag distributes biographical and election data on all its members since 1949. This data, however, is only available in XML, a format most social scientists will find difficult to work with. In this blog post, I would like to introduce a tool to make the Bundestag open data accessible to a broader public: the btmembers R package. btmembers downloads the XML file on members of the Bundestag, converts it to a data frame, and recodes some of the variables. The generated dataset contains more than 11,000 observations for more than 4,000 members of the Bundestag. The unit of analysis is a member-term.
 
 
 ## A look at the original data
 
-Working with XML data can be difficult. That is because, unlike usual rectangular datasets, XML files have a tree-like structure. They can store data in an abitrary number of dimensions. 
+The Bundestag website provides useful  [resources](https://www.bundestag.de/services/opendata/) such as minutes of the plenary sessions, roll call votes, and data on elected members. Information on members of the Bundestag, however, can be difficult to extract since the data is distributed in XML format. Unlike usual rectangular datasets, XML files have a tree-like structure. They can store data in an arbitrary number of dimensions. 
 
-To illustrate this, let us have a look at the data on members of the Bundestag. Below is an example of the data for a member of the Bundestag named Ursula Benedix-Engler (CDU), who was in office between 1972 and 1983. 
+To illustrate this, let us have a look at the file distributed by the Bundestag. Below is an example of the data for a member of the Bundestag named Ursula Benedix-Engler (CDU), who was in office between 1972 and 1983. 
 
 ```{r example_xml, engine='xml', highlight=TRUE}
 <MDB>
@@ -130,18 +130,18 @@ To illustrate this, let us have a look at the data on members of the Bundestag. 
 </MDB>
 ```
 
-The file contains an XML-[node](https://en.wikipedia.org/wiki/Node_(computer_science)) named `MDB` (Mitglied des Deutschen Bundestages) for each member of the Bundestag. This node has four [children](https://en.wikipedia.org/wiki/Tree_(data_structure)): `ID` (id), `NAMEN` (names), `BIOGRAFISCHE_ANGABEN` (biographical information), and `WAHLPERIODEN` (parliamentary terms). All of these four children, except `ID`, have descendants (data nested within different dimensions).
+The file contains an XML-[node](https://en.wikipedia.org/wiki/Node_(computer_science)) named `MDB` (Mitglied des Deutschen Bundestages) for each member of the Bundestag. This node has four [children](https://en.wikipedia.org/wiki/Tree_(data_structure)): `ID` (id), `NAMEN` (names), `BIOGRAFISCHE_ANGABEN` (biographical information), and `WAHLPERIODEN` (parliamentary terms). All of these four children, except `ID`, have descendants, that is, data nested within different dimensions.
 
 In the example above, we see that the MdB has two names (after getting married) and she served three terms in which she was a member of the CDU/CSU faction. 
 
-If we are not only interested in a specific member of the Bundestag but want to compare groups of members, we need a different data structure. I was faced with this problem while working on a chapter in an edited volume on the AfD[^1] and started preparing R scripts to reshape the data. A few months later, I turned these scripts into a proper package to hopefully make the Bundestag open data a little more accessible. 
+How do we combine information on multiple members? If we are not only interested in a specific member of the Bundestag but want to compare groups of members, we need a different data structure. I was faced with this problem while working on a chapter in an edited volume on the AfD[^1] and started preparing R scripts to reshape the data. A few months later, I turned these scripts into a proper package to hopefully make the Bundestag open data a little more accessible. In the rest of this post, I will introduce the btmembers R package, its applications, and its remaining problems. 
 
 ## Getting started with btmembers
 
 The objective of btmembers is to import the file "Stammdaten aller Abgeordneten seit 1949 im XML-Format" and turn it into a tidy rectangular dataset. This involves both the mechanical operation of moving values into tabular cells and some choices about what information to keep or drop. The unit of analysis in the generated dataset is a member-term. In other words, each member can have multiple observations (multiple rows). Some variables are constant for each member (e.g., date of birth) while others vary over time (e.g., start date of a parliamentary term). The dataset preserves almost all of the original data, except two elements:
 
 * Only the most recent names of the member are preserved. 
-* The "functions" of the member during a parliamentary term are not reported. We already have term variables nested in member variables. Incorporating the functions into the dataset would add yet another level of analysis since members can carry out multiple functions during the same term. A look at the original data also revealed that this variable was not coded systematically and often omits functions carried out by the members. 
+* The "functions" of the member during a parliamentary term are not reported. We already have term variables nested in member variables. Incorporating the functions into the dataset would add yet another level of analysis since members can carry out multiple functions during the same term. This would make the structure of the dataset too complex. Furthermore, a look at the original data revealed that this variable was not coded systematically. It often omits functions carried out by the members. 
 
 The next sections describe how to import the data processed by btmembers. 
 
@@ -156,7 +156,7 @@ devtools::install_github("jolyphil/btmembers")
 
 ### Preloaded data
 
-btmembers comes preloaded with the tabular dataset. The data is stored in an object called `members` and can be retrieved as follows:
+btmembers comes preloaded with the processed tabular dataset. The data is stored in an object called `members` and can be retrieved as follows:
 
 ```{r preloaded_data}
 library(btmembers)
@@ -188,7 +188,7 @@ kable(data.frame(Variable, Type, Label))
 
 ### Updating the data
 
-One of the main advantage of btmembers over other available datasets is the easiness with which users can update the data. The Bundestag updates the source file a few times every year.
+One of the main advantage of btmembers over other available datasets is the easiness with which users can update the data. The Bundestag updates the XML file a few times every year.
 
 The version of the dataset preloaded with your installation of btmembers is stored as an attribute of the `members` object.
 
@@ -202,7 +202,7 @@ To check if a more recent version of the data is available on the bundestag webs
 update_available()
 ```
 
-If `update_available()` returns `TRUE`, you can import a more recent version of the dataset using `import_members()`. **Warning**: Importing and converting a new version of the dataset might take several minutes. 
+If `update_available()` returns `TRUE`, you can import a more recent version of the dataset using `import_members()`. This function will follow the same procedure that generated the preloaded dataset. **Warning**: Importing and converting a new version of the dataset might take 2 to 3 minutes. 
 
 ```{r import_members, eval=FALSE}
 members_new <- import_members()
@@ -222,31 +222,58 @@ btmembers is particularly useful for studies on political representation. It is 
 
 Descriptive representation is the idea that the composition of parliaments (for example, in terms of gender, age, ethnicity, and social structure) should mirror the constituencies that elected members into office. With btmembers, it is easy to track the representation of certain groups in the Bundestag, for example, women.  
 
-```{r women}
+```{r women, message = FALSE}
 library(dplyr)
 share_women <- members %>%
-  filter(partei_kurz == "CDU" | 
-         partei_kurz == "CSU" |
-         partei_kurz == "SPD" |
-         partei_kurz == "FDP") %>%
-  group_by(partei_kurz, wp) %>%
+  mutate(faction = case_when(
+    partei_kurz == "CDU" | partei_kurz == "CSU" ~ "Union",
+    partei_kurz == "SPD" ~ "SPD",
+    partei_kurz == "FDP" ~ "FDP")) %>%
+  filter(!is.na(faction)) %>%
+  group_by(faction, wp) %>%
   summarize(women = mean(geschlecht == "weiblich"))
-share_women
 ```
 
-```{r women_graph}
+```{r women_graph, message = FALSE}
 library(ggplot2)
-ggplot(data = share_women, aes(x = wp, y = women, color = partei_kurz)) +
+ggplot(data = share_women, aes(x = wp, y = women, color = faction)) +
   geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  scale_x_continuous(expand = c(0,0), breaks = 1:19) +
+  scale_color_manual(values=c("yellow", "red", "black")) +
+  ggtitle("Share of female members by faction") +
+  xlab("Parliamentary terms") + 
+  ylab("Share of female members")
 ```
 
+The figure above shows that the share of female members in the three reported factions remained very low, usually below 10 percent, until the end of the 1970s (8th parliamentary term). It then grew to reach about 20% in the FDP and CDU/CSU factions and over 40% in the SPD faction. 
 
+We can also have a look at changes in occupational structure among members. The code below returns the ten most common occupations of members of the first parliamentary term (1949-09-07 to 1953-09-07). 
 
+```{r occupations_wp01}
+sort(table(members$beruf[members$wp == 1]), decreasing = T)[1:10]
+```
+
+And the code below returns the ten most common occupations of members of the current parliamentary term (since 2017-10-24).
+
+```{r occupations_wp19}
+sort(table(members$beruf[members$wp == 19]), decreasing = T)[1:10]
+```
+
+We see that occupations like farmer ("Landwirt") and housewife ("Hausfrau") have been replaced by new ones like political scientist ("Politikwissenschaftler"). Jurists were and continue to be very well represented in the Bundestag.  
 
 ### Teaching
 
-dfs
+btmembers can be used by teachers, both in data analysis and political representation classes. It gives students a very hands-on approach.  
+
+## Moving forward: Remaining problems and potential solutions 
+
+Slow
+
+## Conclusions
+
+Main take-aways ...
+
 
 [^1]: Schroeder, W., Weßels, B., & and Joly, P. (2019). Die AfD als Provokateur: Metamorphosen einer Partei zwischen Parlament und Bewegung. In W. Schroeder & B. Weßels (Eds.), _Smarte Spalter: Die AfD zwischen Bewegung und Parlament_ (pp. 221-256). Bonn: Dietz.
 
