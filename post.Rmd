@@ -13,126 +13,136 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-The Bundestag distributes biographical and election data on all its members since 1949. This data, however, is only available in XML, a format most social scientists will find difficult to work with. In this blog post, I would like to introduce a tool to make the Bundestag open data accessible to a broader public: the btmembers R package. btmembers downloads the XML file on members of the Bundestag, converts it to a data frame, and recodes some of the variables. The generated dataset contains more than 11,000 observations for more than 4,000 members of the Bundestag. The unit of analysis is a member-term.
+The Bundestag distributes biographical and election data on all its members since 1949. This data, however, is only available in XML, a format most social scientists will find difficult to work with. In this blog post, I would like to introduce a tool to make the Bundestag open data accessible to a broader public: the btmembers R package. btmembers downloads the XML file on members of the Bundestag, converts it to a data frame, and recodes some of the variables. The generated dataset contains more than 11,000 observations for more than 4,000 members of the Bundestag.
 
 
 ## A look at the original data
 
-The Bundestag website provides useful  [resources](https://www.bundestag.de/services/opendata/) such as minutes of the plenary sessions, roll call votes, and data on elected members. Information on members of the Bundestag, however, can be difficult to extract since the data is distributed in XML format. Unlike usual rectangular datasets, XML files have a tree-like structure. They can store data in an arbitrary number of dimensions. 
+The Bundestag website provides useful  [resources](https://www.bundestag.de/services/opendata/) such as minutes of the plenary sessions, roll call votes, and data on elected members. Information on members of the Bundestag, however, can be difficult to extract since it is stored in an XML file. Unlike usual rectangular datasets, XML files have a tree-like structure. They can organize data in an arbitrary number of dimensions.
 
-To illustrate this, let us have a look at the file distributed by the Bundestag. Below is an example of the data for a member of the Bundestag named Ursula Benedix-Engler (CDU), who was in office between 1972 and 1983. 
+To illustrate this, let us have a look at the file distributed by the Bundestag. Below is an example of the data for Elisabeth Schwarzhaupt (CDU). Schwarzhaupt was Federal Minister of Health from 1961 to 1966 and the first woman to hold a ministerial position in Germany.
 
 ```{r example_xml, engine='xml', highlight=TRUE}
 <MDB>
-  <ID>11000141</ID>
-  <NAMEN>
-    <NAME>
-      <NACHNAME>Benedix</NACHNAME>
-      <VORNAME>Ursula</VORNAME>
-      <ORTSZUSATZ/>
-      <ADEL/>
-      <PRAEFIX/>
-      <ANREDE_TITEL/>
-      <AKAD_TITEL/>
-      <HISTORIE_VON>13.12.1972</HISTORIE_VON>
-      <HISTORIE_BIS>31.07.1979</HISTORIE_BIS>
-    </NAME>
-    <NAME>
-      <NACHNAME>Benedix-Engler</NACHNAME>
-      <VORNAME>Ursula</VORNAME>
-      <ORTSZUSATZ/>
-      <ADEL/>
-      <PRAEFIX/>
-      <ANREDE_TITEL/>
-      <AKAD_TITEL/>
-      <HISTORIE_VON>01.08.1979</HISTORIE_VON>
-      <HISTORIE_BIS/>
-    </NAME>
-  </NAMEN>
-  <BIOGRAFISCHE_ANGABEN>
-    <GEBURTSDATUM>12.09.1922</GEBURTSDATUM>
-    <GEBURTSORT>Neurode / Schlesien</GEBURTSORT>
-    <GEBURTSLAND/>
-    <STERBEDATUM>17.05.2014</STERBEDATUM>
-    <GESCHLECHT>weiblich</GESCHLECHT>
-    <FAMILIENSTAND>verheiratet</FAMILIENSTAND>
-    <RELIGION>katholisch</RELIGION>
-    <BERUF>Oberstudienrätin a. D., Diplomhandelslehrerin</BERUF>
-    <PARTEI_KURZ>CDU</PARTEI_KURZ>
-    <VITA_KURZ/>
-    <VEROEFFENTLICHUNGSPFLICHTIGES/>
-  </BIOGRAFISCHE_ANGABEN>
-  <WAHLPERIODEN>
-    <WAHLPERIODE>
-      <WP>7</WP>
-      <MDBWP_VON>13.12.1972</MDBWP_VON>
-      <MDBWP_BIS>13.12.1976</MDBWP_BIS>
-      <WKR_NUMMER/>
-      <WKR_NAME/>
-      <WKR_LAND/>
-      <LISTE>NDS</LISTE>
-      <MANDATSART>Landesliste</MANDATSART>
-      <INSTITUTIONEN>
-        <INSTITUTION>
-          <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
-          <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
-          <MDBINS_VON/>
-          <MDBINS_BIS/>
-          <FKT_LANG/>
-          <FKTINS_VON/>
-          <FKTINS_BIS/>
-        </INSTITUTION>
-      </INSTITUTIONEN>
-    </WAHLPERIODE>
-    <WAHLPERIODE>
-      <WP>8</WP>
-      <MDBWP_VON>14.12.1976</MDBWP_VON>
-      <MDBWP_BIS>04.11.1980</MDBWP_BIS>
-      <WKR_NUMMER/>
-      <WKR_NAME/>
-      <WKR_LAND/>
-      <LISTE>NDS</LISTE>
-      <MANDATSART>Landesliste</MANDATSART>
-      <INSTITUTIONEN>
-        <INSTITUTION>
-          <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
-          <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
-          <MDBINS_VON/>
-          <MDBINS_BIS/>
-          <FKT_LANG/>
-          <FKTINS_VON/>
-          <FKTINS_BIS/>
-        </INSTITUTION>
-      </INSTITUTIONEN>
-    </WAHLPERIODE>
-    <WAHLPERIODE>
-      <WP>9</WP>
-      <MDBWP_VON>04.11.1980</MDBWP_VON>
-      <MDBWP_BIS>29.03.1983</MDBWP_BIS>
-      <WKR_NUMMER/>
-      <WKR_NAME/>
-      <WKR_LAND/>
-      <LISTE>NDS</LISTE>
-      <MANDATSART>Landesliste</MANDATSART>
-      <INSTITUTIONEN>
-        <INSTITUTION>
-          <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
-          <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
-          <MDBINS_VON>04.11.1980</MDBINS_VON>
-          <MDBINS_BIS>29.03.1983</MDBINS_BIS>
-          <FKT_LANG/>
-          <FKTINS_VON/>
-          <FKTINS_BIS/>
-        </INSTITUTION>
-      </INSTITUTIONEN>
-    </WAHLPERIODE>
-  </WAHLPERIODEN>
-</MDB>
+    <ID>11002129</ID>
+    <NAMEN>
+      <NAME>
+        <NACHNAME>Schwarzhaupt</NACHNAME>
+        <VORNAME>Elisabeth</VORNAME>
+        <ORTSZUSATZ/>
+        <ADEL/>
+        <PRAEFIX/>
+        <ANREDE_TITEL>Dr.</ANREDE_TITEL>
+        <AKAD_TITEL>Dr.</AKAD_TITEL>
+        <HISTORIE_VON>06.10.1953</HISTORIE_VON>
+        <HISTORIE_BIS/>
+      </NAME>
+    </NAMEN>
+    <BIOGRAFISCHE_ANGABEN>
+      <GEBURTSDATUM>07.01.1901</GEBURTSDATUM>
+      <GEBURTSORT>Frankfurt/Main</GEBURTSORT>
+      <GEBURTSLAND/>
+      <STERBEDATUM>29.10.1986</STERBEDATUM>
+      <GESCHLECHT>weiblich</GESCHLECHT>
+      <FAMILIENSTAND>keine Angaben</FAMILIENSTAND>
+      <RELIGION>evangelisch</RELIGION>
+      <BERUF>Bundesminister für Gesundheitswesen, Oberkirchenrätin i. R.</BERUF>
+      <PARTEI_KURZ>CDU</PARTEI_KURZ>
+      <VITA_KURZ/>
+      <VEROEFFENTLICHUNGSPFLICHTIGES/>
+    </BIOGRAFISCHE_ANGABEN>
+    <WAHLPERIODEN>
+      <WAHLPERIODE>
+        <WP>2</WP>
+        <MDBWP_VON>06.10.1953</MDBWP_VON>
+        <MDBWP_BIS>06.10.1957</MDBWP_BIS>
+        <WKR_NUMMER/>
+        <WKR_NAME/>
+        <WKR_LAND/>
+        <LISTE>HES</LISTE>
+        <MANDATSART>Landesliste</MANDATSART>
+        <INSTITUTIONEN>
+          <INSTITUTION>
+            <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
+            <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
+            <MDBINS_VON/>
+            <MDBINS_BIS/>
+            <FKT_LANG/>
+            <FKTINS_VON/>
+            <FKTINS_BIS/>
+          </INSTITUTION>
+        </INSTITUTIONEN>
+      </WAHLPERIODE>
+      <WAHLPERIODE>
+        <WP>3</WP>
+        <MDBWP_VON>15.10.1957</MDBWP_VON>
+        <MDBWP_BIS>15.10.1961</MDBWP_BIS>
+        <WKR_NUMMER>138</WKR_NUMMER>
+        <WKR_NAME/>
+        <WKR_LAND>HES</WKR_LAND>
+        <LISTE/>
+        <MANDATSART>Direktwahl</MANDATSART>
+        <INSTITUTIONEN>
+          <INSTITUTION>
+            <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
+            <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
+            <MDBINS_VON/>
+            <MDBINS_BIS/>
+            <FKT_LANG/>
+            <FKTINS_VON/>
+            <FKTINS_BIS/>
+          </INSTITUTION>
+        </INSTITUTIONEN>
+      </WAHLPERIODE>
+      <WAHLPERIODE>
+        <WP>4</WP>
+        <MDBWP_VON>17.10.1961</MDBWP_VON>
+        <MDBWP_BIS>17.10.1965</MDBWP_BIS>
+        <WKR_NUMMER/>
+        <WKR_NAME/>
+        <WKR_LAND/>
+        <LISTE>HES</LISTE>
+        <MANDATSART>Landesliste</MANDATSART>
+        <INSTITUTIONEN>
+          <INSTITUTION>
+            <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
+            <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
+            <MDBINS_VON/>
+            <MDBINS_BIS/>
+            <FKT_LANG/>
+            <FKTINS_VON/>
+            <FKTINS_BIS/>
+          </INSTITUTION>
+        </INSTITUTIONEN>
+      </WAHLPERIODE>
+      <WAHLPERIODE>
+        <WP>5</WP>
+        <MDBWP_VON>19.10.1965</MDBWP_VON>
+        <MDBWP_BIS>19.10.1969</MDBWP_BIS>
+        <WKR_NUMMER/>
+        <WKR_NAME/>
+        <WKR_LAND/>
+        <LISTE>HES</LISTE>
+        <MANDATSART>Landesliste</MANDATSART>
+        <INSTITUTIONEN>
+          <INSTITUTION>
+            <INSART_LANG>Fraktion/Gruppe</INSART_LANG>
+            <INS_LANG>Fraktion der Christlich Demokratischen Union/Christlich - Sozialen Union</INS_LANG>
+            <MDBINS_VON>19.10.1965</MDBINS_VON>
+            <MDBINS_BIS>19.10.1969</MDBINS_BIS>
+            <FKT_LANG/>
+            <FKTINS_VON/>
+            <FKTINS_BIS/>
+          </INSTITUTION>
+        </INSTITUTIONEN>
+      </WAHLPERIODE>
+    </WAHLPERIODEN>
+  </MDB>
 ```
 
 The file contains an XML-[node](https://en.wikipedia.org/wiki/Node_(computer_science)) named `MDB` (Mitglied des Deutschen Bundestages) for each member of the Bundestag. This node has four [children](https://en.wikipedia.org/wiki/Tree_(data_structure)): `ID` (id), `NAMEN` (names), `BIOGRAFISCHE_ANGABEN` (biographical information), and `WAHLPERIODEN` (parliamentary terms). All of these four children, except `ID`, have descendants, that is, data nested within different dimensions.
 
-In the example above, we see that the MdB has two names (after getting married) and she served three terms in which she was a member of the CDU/CSU faction. 
+In the example above, we see that the Elisabeth Schwarzhaupt was born on January 7, 1901 in Frankfurt and died on October 20, 1986. She served four terms from 1953 to 1969.
 
 How do we combine information on multiple members? If we are not only interested in a specific member of the Bundestag but want to compare groups of members, we need a different data structure. I was faced with this problem while working on a chapter in an edited volume on the AfD[^1] and started preparing R scripts to reshape the data. A few months later, I turned these scripts into a proper package to hopefully make the Bundestag open data a little more accessible. In the rest of this post, I will introduce the btmembers R package, its applications, and its remaining problems. 
 
@@ -140,10 +150,10 @@ How do we combine information on multiple members? If we are not only interested
 
 The objective of btmembers is to import the file "Stammdaten aller Abgeordneten seit 1949 im XML-Format" and turn it into a tidy rectangular dataset. This involves both the mechanical operation of moving values into tabular cells and some choices about what information to keep or drop. The unit of analysis in the generated dataset is a member-term. In other words, each member can have multiple observations (multiple rows). Some variables are constant for each member (e.g., date of birth) while others vary over time (e.g., start date of a parliamentary term). The dataset preserves almost all of the original data, except two elements:
 
-* Only the most recent names of the member are preserved. 
-* The "functions" of the member during a parliamentary term are not reported. We already have term variables nested in member variables. Incorporating the functions into the dataset would add yet another level of analysis since members can carry out multiple functions during the same term. This would make the structure of the dataset too complex. Furthermore, a look at the original data revealed that this variable was not coded systematically. It often omits functions carried out by the members. 
+* Only the most recent names of the member are preserved. Members can have multiple names, for example if they got married (or divorced). 
+* The “functions” of the member during a parliamentary term are not reported. We already have term variables nested in member variables. Incorporating the functions into the dataset would add yet another level of analysis since members can carry out multiple functions during the same term. This would make the structure of the dataset too complex. Furthermore, a look at the original data revealed that this variable was not coded systematically. It often omits functions carried out by the members. Information on functions is much more detailed for current than for previous members. 
 
-The next sections describe how to import the data processed by btmembers. 
+I will address some of the concerns related to the omission of these pieces of information at the end of this post. The next sections describe how to import the data processed by btmembers.
 
 ### Installation
 
@@ -190,7 +200,7 @@ kable(data.frame(Variable, Type, Label))
 
 One of the main advantage of btmembers over other available datasets is the easiness with which users can update the data. The Bundestag updates the XML file a few times every year.
 
-The version of the dataset preloaded with your installation of btmembers is stored as an attribute of the `members` object.
+The version of the dataset preloaded with your installation of btmembers is stored as an attribute of the `members` object. You can find the version loaded on your machine by proceeding as follows:
 
 ```{r current_version}
 attr(members, "version")
@@ -216,11 +226,11 @@ saveRDS(members_new, "members_new.rds")
 
 ## Applications
 
-btmembers is particularly useful for studies on political representation. It is also a great tool for teaching. 
+btmembers is particularly useful for research on political representation. It is also a great tool for teaching. 
 
 ### Research on political representation
 
-Descriptive representation is the idea that the composition of parliaments (for example, in terms of gender, age, ethnicity, and social structure) should mirror the constituencies that elected members into office. With btmembers, it is easy to track the representation of certain groups in the Bundestag, for example, women.  
+Descriptive representation is the idea that the composition of parliaments (for example, in terms of gender, age, ethnicity, and social structure) should mirror the constituencies represented by elected members. With btmembers, it is easy to track the representation of certain groups in the Bundestag, for example, women. Below is an example showing how to examine the representation of women in different factions over time. 
 
 ```{r women, message = FALSE}
 library(dplyr)
@@ -246,9 +256,9 @@ ggplot(data = share_women, aes(x = wp, y = women, color = faction)) +
   ylab("Share of female members")
 ```
 
-The figure above shows that the share of female members in the three reported factions remained very low, usually below 10 percent, until the end of the 1970s (8th parliamentary term). It then grew to reach about 20% in the FDP and CDU/CSU factions and over 40% in the SPD faction. 
+The figure above shows that the share of female members in the FDP, SPD, and CDU/CSU factions remained very low—usually below 10 percent—until the end of the 1970s (8th parliamentary term). It then grew to reach about 20% in the FDP and CDU/CSU factions and over 40% in the SPD faction.
 
-We can also have a look at changes in occupational structure among members. The code below returns the ten most common occupations of members of the first parliamentary term (1949-09-07 to 1953-09-07). 
+We can also have a look at changes in the occupational structure of members over time. The code below returns the ten most common occupations of members of the first parliamentary term (1949-09-07 to 1953-09-07).
 
 ```{r occupations_wp01}
 sort(table(members$beruf[members$wp == 1]), decreasing = T)[1:10]
@@ -264,15 +274,29 @@ We see that occupations like farmer ("Landwirt") and housewife ("Hausfrau") have
 
 ### Teaching
 
-btmembers can be used by teachers, both in data analysis and political representation classes. It gives students a very hands-on approach.  
+btmembers can also be used by teachers. In data analysis classes, the package is well-suited for exercises on data visualization, clustered data, and textual analysis (especially with the `vita_kurz` variable, which is available for the last parliamentary term). It is also a great resource for classes on political representation and German politics. It provides a structured and easily accessible repertoire of facts about German parliamentary history. 
 
 ## Moving forward: Remaining problems and potential solutions 
 
-Slow
+There are a few remaining problems with btmembers. Some problems relate to the package itself, others to the original data from the Bundestag.
 
-## Conclusions
+### Problems with the package itself
 
-Main take-aways ...
+1. **btmembers is slow**. Running the function `import_members()` to update the data can take several minutes. There are probably bottlenecks in the algorithm, but I have not figured out how to substantially increase the execution. One potential problem is that data on members is treated sequentially, one member at a time. I have tried to parallelize the operation, with little success for the moment. 
+
+2. **Data is lost**. As explained previously, all the original data provided by the Bundestag is preserved, except previous names of members and their functions in the Bundestag. One way to keep the all data would be to give users the option to import not one but _multiple_ dataframes, for example, one dataframe for names, one for biographical data, and one for functions. The dataframes could then be merged using the id and parliamentary term variables as a merging keys. 
+
+### Problems with the original data
+
+1. **Some variables should have been coded as factors**. The data provided by the Bundestag was not intended to be condensed in a tabular dataset. Sometimes different values point to the same underlying concept. Family status, for example, has `r length(unique(members$familienstand))` different values: this can certainly be simplified. For the moment, I have refrained from recoding these variables as I am afraid I would loose some valuable information. Most variables have therefore been left as character instead of factor variables. 
+
+2. **The variable `partei_kurz` does not take into account changes in party affiliation**. It seems like the Bundestag only refers to the last affiliation, but this remains unclear. 
+
+3. **The variable `geburtsland` is not coded systematically**. In the original XML file, this variable was usually left empty when the member was born in Germany. Yet, the problem is that the borders of Germany changed over the course of the twentieth century and this is not reflected in the data. Should members born in Pomerania or Sudetenland be considered born in Germany? Also, the coding of countries of origin should follow an internationally agreed standard, such as ISO-3C. Creating an alternative variable might be necessary. 
+
+## Conclusion
+
+Despite these problems, btmembers constitutes a useful resource for researchers, journalists, teachers, and the broader public. It helps unpack the Bundestag open data and turns it into a tabular dataset, a format better suited for comparative analyses than XML data. 
 
 
 [^1]: Schroeder, W., Weßels, B., & and Joly, P. (2019). Die AfD als Provokateur: Metamorphosen einer Partei zwischen Parlament und Bewegung. In W. Schroeder & B. Weßels (Eds.), _Smarte Spalter: Die AfD zwischen Bewegung und Parlament_ (pp. 221-256). Bonn: Dietz.
