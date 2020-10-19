@@ -3,8 +3,7 @@ title: 'btmembers: An R package to import data on members of the Bundestag'
 author: "Philippe Joly"
 date: "19/10/2020"
 output:
-  beamer_presentation:
-    keep_tex: true
+  beamer_presentation
 ---
 
 ```{r setup, include=FALSE}
@@ -97,5 +96,76 @@ members %>%
   kable_styling(latex_options="scale_down")
 ```
 
+## Current version of the dataset
 
+The current version of the dataset (`r attr(members, "version")`)  contains `r nrow(members)` observations from `r length(unique(btmembers::members$id))` members. The data includes `r ncol(btmembers::members)` variables:
+
+```{r variables}
+names(members)
+```
+
+## Check for updates
+
+- btmembers can extract new, updated data from the Bundestag.
+- Check if a more recent version of the data is available. 
+
+```{r update_available, echo = TRUE}
+update_available()
+```
+
+## Import new data
+
+- Import a more recent version of the dataset.
+
+```{r import_members, echo = TRUE, eval = FALSE}
+members_new <- import_members()
+```
+
+## Applications
+
+- btmembers is particularly useful for:
+  1. Research on political representation
+  2. Teaching
+  
+## Representation of women
+
+```{r women, echo = FALSE, message = FALSE}
+library(dplyr)
+share_women <- members %>%
+  mutate(faction = case_when(
+    partei_kurz == "CDU" | partei_kurz == "CSU" ~ "Union",
+    partei_kurz == "SPD" ~ "SPD",
+    partei_kurz == "FDP" ~ "FDP")) %>%
+  filter(!is.na(faction)) %>%
+  group_by(faction, wp) %>%
+  summarize(women = mean(geschlecht == "weiblich"))
+```
+
+```{r women_graph, message = FALSE}
+library(ggplot2)
+ggplot(data = share_women, aes(x = wp, y = women, color = faction)) +
+  geom_point() +
+  geom_smooth() +
+  scale_x_continuous(expand = c(0,0), breaks = 1:19) +
+  scale_color_manual(values=c("yellow", "red", "black")) +
+  ggtitle("Share of female members by faction") +
+  xlab("Parliamentary terms") + 
+  ylab("Share of female members")
+```
+
+## Occupational structure: First parliamentary term
+
+The ten most common occupations of the members of the **first** parliamentary term. 
+
+```{r occupations_wp01}
+kable(sort(table(members$beruf[members$wp == 1]), decreasing = T)[1:10])
+```
+
+## Occupational structure: Current parliamentary term
+
+The ten most common occupations of the members of the **current** parliamentary term. 
+
+```{r occupations_wp19}
+kable(sort(table(members$beruf[members$wp == 19]), decreasing = T)[1:10])
+```
 
