@@ -1,12 +1,12 @@
 ---
 title: 'btmembers: An R package to import data on all members of the Bundestag since
   1949'
-author: "Philippe Joly"
-date: "05/10/2020"
+author: "Philippe Joly (WZB)"
+date: "October 15, 2020"
 output:
+  pdf_document: default
   html_document:
     highlight: pygments
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
